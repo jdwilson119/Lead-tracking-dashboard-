@@ -1,36 +1,45 @@
 /**
  * Lead Tracking Dashboard
  *
- * Bound to the Google Sheet that collects Google Form responses.
- * The form writes the raw columns (timestamp, name, email, ...); this
- * script adds and manages three extra "tracking" columns and serves a
- * live dashboard on top of the same sheet, so the sheet is always the
- * single source of truth.
+ * Bound to the Google Sheet that stores leads, whichever way they arrive
+ * (a linked Google Form, or the Meta Lead Ads webhook in MetaWebhook.gs).
+ * Either source writes into the same sheet; this script adds and manages
+ * three extra "tracking" columns and serves a live dashboard on top of
+ * that sheet, so the sheet is always the single source of truth.
  */
 
-const SHEET_NAME = 'Form Responses 1'; // default name Google Forms gives its response sheet
+const SHEET_NAME = 'Form Responses 1'; // rename to 'Leads' (or your sheet's tab name) if you're not using a Google Form
+const LEAD_COLUMNS = ['Timestamp', 'Name', 'Email', 'Phone', 'Company', 'Job Title', 'Lead Source', 'Notes'];
 const TRACKING_COLUMNS = ['Status', 'Contacted Date', 'Contacted By'];
 const STATUS_NEW = 'New';
 const STATUS_CONTACTED = 'Contacted';
 
 function getSheet_() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
-    throw new Error(`Sheet "${SHEET_NAME}" not found. Update SHEET_NAME in Code.gs to match your form's response sheet.`);
+    // No Google Form auto-created this sheet (e.g. Meta-only setup) — create it.
+    sheet = ss.insertSheet(SHEET_NAME);
   }
   return sheet;
 }
 
 /**
- * Ensures the tracking columns exist at the end of the header row.
- * Safe to run repeatedly (e.g. from the onOpen menu) since it only
- * appends columns that are missing.
+ * Ensures the sheet has a header row (lead columns + tracking columns)
+ * and that any tracking columns missing from an existing header (e.g.
+ * one Google Forms created) get appended. Safe to run repeatedly.
  */
 function ensureTrackingColumns_() {
   const sheet = getSheet_();
   const lastCol = sheet.getLastColumn();
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
+  if (lastCol === 0) {
+    const allColumns = LEAD_COLUMNS.concat(TRACKING_COLUMNS);
+    sheet.getRange(1, 1, 1, allColumns.length).setValues([allColumns]);
+    return allColumns;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   TRACKING_COLUMNS.forEach((colName) => {
     if (headers.indexOf(colName) === -1) {
       sheet.getRange(1, sheet.getLastColumn() + 1).setValue(colName);
@@ -80,8 +89,29 @@ function backfillExistingRows() {
   statusRange.setValues(updated);
 }
 
-/** Serves the dashboard as a web app. Deploy via Deploy > New deployment > Web app. */
-function doGet() {
+/**
+ * Serves the dashboard as a web app, OR responds to Meta's webhook
+ * verification handshake (a GET request carrying hub.mode/hub.challenge)
+ * if MetaWebhook.gs's verification handler is present. Deploy via
+ * Deploy > New deployment > Web app.
+ *
+ * Because the deployment must allow anonymous access (Meta calls it
+ * with no Google auth), the dashboard itself is gated behind a
+ * DASHBOARD_ACCESS_KEY script property so the same public URL doesn't
+ * expose lead data to anyone who finds the link. Set it once via
+ * PropertiesService.getScriptProperties().setProperty('DASHBOARD_ACCESS_KEY', '...')
+ * and share the dashboard as .../exec?key=YOUR_KEY.
+ */
+function doGet(e) {
+  if (e && e.parameter && e.parameter['hub.mode'] === 'subscribe' && typeof handleMetaVerification_ === 'function') {
+    return handleMetaVerification_(e);
+  }
+
+  const requiredKey = PropertiesService.getScriptProperties().getProperty('DASHBOARD_ACCESS_KEY');
+  if (requiredKey && (!e || e.parameter.key !== requiredKey)) {
+    return HtmlService.createHtmlOutput('<p>Access denied.</p>');
+  }
+
   return HtmlService.createHtmlOutputFromFile('Dashboard')
     .setTitle('Lead Tracking Dashboard')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
