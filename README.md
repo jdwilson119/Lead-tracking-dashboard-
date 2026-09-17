@@ -321,6 +321,50 @@ link on that lead's row.
 
 ---
 
+## Optional: Instagram DM Outreach
+
+A second dashboard tab tracks Instagram DM conversations for outreach —
+who's messaged you, whether you've replied, a live feed of recent
+messages, and message received/delivered/read counts. It uses the same
+Apps Script project and spreadsheet as the leads pipeline.
+
+**Important limitation:** Instagram's API does not let any app — including
+this one — see who your followers are or fire an event when someone new
+follows. That's a deliberate platform restriction, not a gap in this
+build, and there's no legitimate way around it (scraping Instagram to get
+follower lists violates its Terms of Service and risks the account being
+banned). What Instagram *does* expose is an aggregate daily follower
+count, which is what powers the "New Followers (24h/7d)" tiles — real
+numbers, but a count only, refreshed about once a day on Instagram's
+side, not live, and with no way to tell you the names behind that number.
+
+1. **Reuse or add `MetaWebhook.gs` and `Instagram.gs`** in the same Apps
+   Script project as the leads pipeline (see either Meta setup path
+   above for the base Facebook App).
+2. **Connect an Instagram professional account** (Business or Creator) to
+   the same Facebook Page used for the app, if it isn't already
+   (Instagram app → Settings → Linked Accounts).
+3. **Add permissions to the Facebook App:** `instagram_basic`,
+   `instagram_manage_messages`, and `instagram_manage_insights` (for the
+   follower-count feature). These require App Review before they work for
+   accounts other than the app's own test users/admins.
+4. **Find the Instagram Business Account ID** — e.g.
+   `GET /me/accounts?fields=instagram_business_account&access_token=...`
+   against the connected Page.
+5. **Add `IG_USER_ID`** to Script Properties: open `setMetaScriptProperties()`
+   in `MetaWebhook.gs`, fill in the real ID alongside your other secrets,
+   run it once, then remove the real value from source.
+6. **Subscribe the webhook** to the `messages`, `message_deliveries`, and
+   `message_reads` fields on the **`instagram`** object (a separate
+   subscription object from the `page`/`leadgen` one used for lead ads —
+   both point at the same callback URL and verify token).
+7. **Add the daily follower-count trigger:** in the Apps Script editor,
+   **Triggers → Add Trigger** → function `logDailyFollowerCount_` → event
+   source `Time-driven` → `Day timer` (any time is fine — once a day is
+   all the underlying data supports).
+8. **Send yourself a test DM** on Instagram and confirm it shows up on
+   the dashboard's Instagram tab within ~10 seconds.
+
 ## Day-to-day use
 
 - New leads show up on the dashboard as **New**, whichever source they
@@ -336,7 +380,11 @@ link on that lead's row.
 
 - `Code.gs` — Apps Script server-side logic (sheet access, status
   updates, dashboard serving).
-- `Dashboard.html` — the dashboard UI served by the web app.
-- `MetaWebhook.gs` — Meta Lead Ads webhook receiver (only needed for the
-  custom-webhook alternative, not the Make.com path).
+- `Dashboard.html` — the dashboard UI served by the web app (Leads and
+  Instagram DMs tabs).
+- `MetaWebhook.gs` — Meta Lead Ads + Instagram messaging webhook receiver
+  (only needed for the custom-webhook alternative for leads; required for
+  the Instagram DM feature either way).
+- `Instagram.gs` — Instagram DM/contact tracking and follower-growth
+  logic.
 - `appsscript.json` — Apps Script project manifest/web app config.

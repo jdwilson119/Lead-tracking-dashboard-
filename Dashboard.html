@@ -13,6 +13,11 @@
       --new: #2563eb;
       --contacted: #16a34a;
       --accent: #4f46e5;
+      --received: #7c3aed;
+      --delivered: #0891b2;
+      --read: #16a34a;
+      --sent: #6b7280;
+      --live-dot: #16a34a;
     }
     * { box-sizing: border-box; }
     body {
@@ -25,6 +30,19 @@
     h1 { font-size: 20px; margin: 0 0 4px; }
     .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
 
+    .tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .tab-btn {
+      background: none; border: none; padding: 10px 16px; font-size: 13.5px; font-weight: 600;
+      color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .live-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live-dot); animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
     .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .stat-card {
       background: var(--card-bg);
@@ -36,7 +54,9 @@
     .stat-card .value { font-size: 24px; font-weight: 600; }
     .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 
-    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .section-title { font-size: 14px; font-weight: 600; margin: 22px 0 10px; }
+
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
     .toolbar select, .toolbar input {
       padding: 6px 10px;
       border: 1px solid var(--border);
@@ -75,6 +95,14 @@
     }
     .badge.new { background: var(--new); }
     .badge.contacted { background: var(--contacted); }
+    .badge.received { background: var(--received); }
+    .badge.sent { background: var(--sent); }
+    .badge.delivered { background: var(--delivered); }
+    .badge.read { background: var(--read); }
+
+    .direction { font-size: 15px; }
+    .direction.in { color: var(--received); }
+    .direction.out { color: var(--sent); }
 
     button {
       border: none;
@@ -91,35 +119,92 @@
 
     .empty { padding: 30px; text-align: center; color: var(--muted); }
     .notes-cell { max-width: 220px; white-space: pre-wrap; }
+    .msg-cell { max-width: 320px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>Lead Tracking Dashboard</h1>
-  <div class="subtitle">Reads directly from the response sheet — mark a lead contacted here and the sheet updates instantly.</div>
+  <h1>Outreach Dashboard</h1>
+  <div class="subtitle">Reads directly from the sheet — every action here writes straight back to it.</div>
 
-  <div class="stats" id="stats"></div>
-
-  <div class="toolbar">
-    <select id="statusFilter">
-      <option value="all">All statuses</option>
-      <option value="New">New</option>
-      <option value="Contacted">Contacted</option>
-    </select>
-    <select id="jobAdFilter">
-      <option value="all">All job ads</option>
-    </select>
-    <input id="search" type="text" placeholder="Search name, email, company…">
-    <div class="spacer"></div>
-    <span class="refresh-note" id="refreshNote">Refreshing every 30s</span>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="leads">Leads</button>
+    <button class="tab-btn" data-tab="instagram">Instagram DMs</button>
   </div>
 
-  <div id="tableWrap"></div>
+  <!-- LEADS TAB -->
+  <div class="tab-panel active" id="tab-leads">
+    <div class="stats" id="stats"></div>
+
+    <div class="toolbar">
+      <select id="statusFilter">
+        <option value="all">All statuses</option>
+        <option value="New">New</option>
+        <option value="Contacted">Contacted</option>
+      </select>
+      <select id="jobAdFilter">
+        <option value="all">All job ads</option>
+      </select>
+      <input id="search" type="text" placeholder="Search name, email, company…">
+      <div class="spacer"></div>
+      <span class="refresh-note" id="refreshNote">Refreshing every 30s</span>
+    </div>
+
+    <div id="tableWrap"></div>
+  </div>
+
+  <!-- INSTAGRAM TAB -->
+  <div class="tab-panel" id="tab-instagram">
+    <p class="subtitle" style="margin-top:-8px;">
+      Tracks DM conversations, plus aggregate follower growth. Instagram doesn't let any app see who specifically followed you, and the follower count itself only refreshes about once a day on Instagram's side (not live).
+    </p>
+
+    <div class="stats" id="igStats"></div>
+
+    <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+      <span>Most recent messages</span>
+      <span class="live-indicator"><span class="live-dot"></span>Live — updates every 10s</span>
+    </div>
+    <div id="igMessagesWrap"></div>
+
+    <div class="section-title">Contacts</div>
+    <div class="toolbar">
+      <select id="igStatusFilter">
+        <option value="all">All statuses</option>
+        <option value="New">Not yet contacted</option>
+        <option value="Contacted">Contacted</option>
+      </select>
+      <input id="igSearch" type="text" placeholder="Search username or name…">
+      <div class="spacer"></div>
+      <span class="refresh-note" id="igCount"></span>
+    </div>
+    <div id="igContactsWrap"></div>
+  </div>
 
   <script>
-    let allLeads = [];
-    const POLL_MS = 30000;
+    // ---------- shared helpers ----------
+    function escapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-    function render() {
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ---------- Leads tab ----------
+    let allLeads = [];
+    const LEADS_POLL_MS = 30000;
+
+    function renderLeads() {
       const filterStatus = document.getElementById('statusFilter').value;
       const filterJobAd = document.getElementById('jobAdFilter').value;
       const q = document.getElementById('search').value.trim().toLowerCase();
@@ -132,8 +217,8 @@
       });
 
       renderJobAdOptions();
-      renderStats();
-      renderTable(filtered);
+      renderLeadStats();
+      renderLeadTable(filtered);
     }
 
     function renderJobAdOptions() {
@@ -147,7 +232,7 @@
       if (jobAds.includes(current)) select.value = current;
     }
 
-    function renderStats() {
+    function renderLeadStats() {
       const total = allLeads.length;
       const contacted = allLeads.filter((l) => l['Status'] === 'Contacted').length;
       const fresh = total - contacted;
@@ -162,15 +247,6 @@
           <div class="label">${label}</div>
         </div>
       `).join('');
-    }
-
-    function escapeHtml(str) {
-      return String(str == null ? '' : str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
     }
 
     function fieldOrder(lead) {
@@ -189,7 +265,6 @@
     function renderCell(lead, col) {
       const value = lead[col];
       if (col === 'CV Link' && value) {
-        // Only allow http(s) links through as a clickable anchor; anything else renders as plain (escaped) text.
         const isSafeUrl = /^https?:\/\//i.test(String(value));
         return isSafeUrl
           ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">View CV</a>`
@@ -198,7 +273,7 @@
       return escapeHtml(value);
     }
 
-    function renderTable(leads) {
+    function renderLeadTable(leads) {
       const wrap = document.getElementById('tableWrap');
       if (!leads.length) {
         wrap.innerHTML = '<div class="empty">No leads match.</div>';
@@ -219,8 +294,8 @@
           ? `${escapeHtml(lead['Contacted Date'])}${lead['Contacted By'] ? ' by ' + escapeHtml(lead['Contacted By']) : ''}`
           : '—';
         const action = isContacted
-          ? `<button class="btn-revert" onclick="revert(${lead.rowNumber})">Revert to New</button>`
-          : `<button class="btn-contact" onclick="contact(${lead.rowNumber})">Mark Contacted</button>`;
+          ? `<button class="btn-revert" onclick="contactLead(${lead.rowNumber}, false)">Revert to New</button>`
+          : `<button class="btn-contact" onclick="contactLead(${lead.rowNumber}, true)">Mark Contacted</button>`;
 
         return `<tr>${cells}<td>${badge}</td><td>${contactedInfo}</td><td>${action}</td></tr>`;
       }).join('');
@@ -228,29 +303,155 @@
       wrap.innerHTML = `<table><thead><tr>${headerRow}</tr></thead><tbody>${rows}</tbody></table>`;
     }
 
-    function contact(rowNumber) {
-      google.script.run.withSuccessHandler(onLeadsUpdated).markContacted(rowNumber);
-    }
-
-    function revert(rowNumber) {
-      google.script.run.withSuccessHandler(onLeadsUpdated).markNew(rowNumber);
+    function contactLead(rowNumber, contacted) {
+      const fn = contacted ? 'markContacted' : 'markNew';
+      google.script.run.withSuccessHandler(onLeadsUpdated)[fn](rowNumber);
     }
 
     function onLeadsUpdated(leads) {
       allLeads = leads;
-      render();
+      renderLeads();
     }
 
     function loadLeads() {
       google.script.run.withSuccessHandler(onLeadsUpdated).getLeads();
     }
 
-    document.getElementById('statusFilter').addEventListener('change', render);
-    document.getElementById('jobAdFilter').addEventListener('change', render);
-    document.getElementById('search').addEventListener('input', render);
+    document.getElementById('statusFilter').addEventListener('change', renderLeads);
+    document.getElementById('jobAdFilter').addEventListener('change', renderLeads);
+    document.getElementById('search').addEventListener('input', renderLeads);
 
+    // ---------- Instagram tab ----------
+    let igContacts = [];
+    let igMessages = [];
+    let igStats = { received: 0, delivered: 0, leftOnRead: 0 };
+    let igFollowerGrowth = { latest: null, delta24h: null, delta7d: null };
+    const IG_POLL_MS = 10000;
+
+    function renderInstagram() {
+      renderIgStats();
+      renderIgMessages();
+      renderIgContacts();
+    }
+
+    function signed(n) {
+      if (n == null) return '—';
+      return (n > 0 ? '+' : '') + n;
+    }
+
+    function renderIgStats() {
+      const el = document.getElementById('igStats');
+      const notContacted = igContacts.filter((c) => c['Status'] !== 'Contacted').length;
+      el.innerHTML = [
+        ['Received', igStats.received],
+        ['Delivered', igStats.delivered],
+        ['Left on Read', igStats.leftOnRead],
+        ['Not Yet Contacted', notContacted],
+        ['New Followers (24h)', signed(igFollowerGrowth.delta24h)],
+        ['New Followers (7d)', signed(igFollowerGrowth.delta7d)]
+      ].map(([label, value]) => `
+        <div class="stat-card">
+          <div class="value">${value}</div>
+          <div class="label">${label}</div>
+        </div>
+      `).join('');
+    }
+
+    function statusBadge(status) {
+      const cls = { Received: 'received', Sent: 'sent', Delivered: 'delivered', Read: 'read' }[status] || 'sent';
+      return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
+    }
+
+    function renderIgMessages() {
+      const wrap = document.getElementById('igMessagesWrap');
+      if (!igMessages.length) {
+        wrap.innerHTML = '<div class="empty">No messages yet.</div>';
+        return;
+      }
+      const rows = igMessages.map((m) => {
+        const isIn = m['Direction'] === 'Received';
+        const arrow = isIn ? '<span class="direction in">↘</span>' : '<span class="direction out">↗</span>';
+        return `<tr>
+          <td>${escapeHtml(m['Timestamp'])}</td>
+          <td>${arrow} ${escapeHtml(m['Username'] || m['IGSID'])}</td>
+          <td class="msg-cell">${escapeHtml(m['Message'])}</td>
+          <td>${statusBadge(m['Message Status'])}</td>
+        </tr>`;
+      }).join('');
+      wrap.innerHTML = `<table><thead><tr><th>Time</th><th>Contact</th><th>Message</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderIgContacts() {
+      const filterStatus = document.getElementById('igStatusFilter').value;
+      const q = document.getElementById('igSearch').value.trim().toLowerCase();
+
+      const filtered = igContacts.filter((c) => {
+        if (filterStatus !== 'all' && c['Status'] !== filterStatus) return false;
+        if (!q) return true;
+        return `${c['Username']} ${c['Name']}`.toLowerCase().includes(q);
+      });
+
+      document.getElementById('igCount').textContent = filtered.length + ' of ' + igContacts.length + ' shown';
+
+      const wrap = document.getElementById('igContactsWrap');
+      if (!filtered.length) {
+        wrap.innerHTML = '<div class="empty">No contacts match.</div>';
+        return;
+      }
+
+      const rows = filtered.map((c) => {
+        const isContacted = c['Status'] === 'Contacted';
+        const badge = isContacted
+          ? '<span class="badge contacted">Contacted</span>'
+          : '<span class="badge new">Not contacted</span>';
+        const contactedInfo = isContacted
+          ? `${escapeHtml(c['Contacted Date'])}${c['Contacted By'] ? ' by ' + escapeHtml(c['Contacted By']) : ''}`
+          : '—';
+        const action = isContacted
+          ? `<button class="btn-revert" onclick="contactInstagram(${c.rowNumber}, false)">Revert</button>`
+          : `<button class="btn-contact" onclick="contactInstagram(${c.rowNumber}, true)">Mark Contacted</button>`;
+
+        return `<tr>
+          <td>${escapeHtml(c['Username'] || c['IGSID'])}</td>
+          <td>${escapeHtml(c['Name'])}</td>
+          <td class="msg-cell">${escapeHtml(c['Last Message'])}</td>
+          <td>${escapeHtml(c['Last Activity'])}</td>
+          <td>${badge}</td>
+          <td>${contactedInfo}</td>
+          <td>${action}</td>
+        </tr>`;
+      }).join('');
+
+      wrap.innerHTML = `<table><thead><tr>
+        <th>Username</th><th>Name</th><th>Last Message</th><th>Last Activity</th><th>Status</th><th>Contacted</th><th></th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function contactInstagram(rowNumber, contacted) {
+      const fn = contacted ? 'markInstagramContacted' : 'markInstagramNew';
+      google.script.run.withSuccessHandler(onInstagramUpdated)[fn](rowNumber);
+    }
+
+    function onInstagramUpdated(data) {
+      igContacts = data.contacts;
+      igMessages = data.messages;
+      igStats = data.stats;
+      igFollowerGrowth = data.followerGrowth || igFollowerGrowth;
+      renderInstagram();
+    }
+
+    function loadInstagram() {
+      google.script.run.withSuccessHandler(onInstagramUpdated).getInstagramData();
+    }
+
+    document.getElementById('igStatusFilter').addEventListener('change', renderIgContacts);
+    document.getElementById('igSearch').addEventListener('input', renderIgContacts);
+
+    // ---------- boot ----------
     loadLeads();
-    setInterval(loadLeads, POLL_MS);
+    loadInstagram();
+    setInterval(loadLeads, LEADS_POLL_MS);
+    setInterval(loadInstagram, IG_POLL_MS);
   </script>
 </body>
 </html>

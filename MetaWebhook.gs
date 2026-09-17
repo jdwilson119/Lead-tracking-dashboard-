@@ -48,7 +48,8 @@ function setMetaScriptProperties() {
     META_VERIFY_TOKEN: 'REPLACE_WITH_A_RANDOM_STRING_YOU_MAKE_UP',
     META_PAGE_ACCESS_TOKEN: 'REPLACE_WITH_YOUR_PAGE_ACCESS_TOKEN',
     WEBHOOK_SHARED_SECRET: 'REPLACE_WITH_ANOTHER_RANDOM_STRING_YOU_MAKE_UP',
-    DASHBOARD_ACCESS_KEY: 'REPLACE_WITH_A_THIRD_RANDOM_STRING_YOU_MAKE_UP'
+    DASHBOARD_ACCESS_KEY: 'REPLACE_WITH_A_THIRD_RANDOM_STRING_YOU_MAKE_UP',
+    IG_USER_ID: 'REPLACE_WITH_YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID' // only needed for the Instagram DM/follower-growth features
   });
 }
 
@@ -62,7 +63,9 @@ function handleMetaVerification_(e) {
 }
 
 /**
- * Handles Meta's POST lead notifications.
+ * Handles Meta's POST webhook notifications — both Lead Ads (object:
+ * "page", field: "leadgen") and Instagram messaging (object: "instagram",
+ * a "messaging" array per entry), routing each to its own handler.
  *
  * Apps Script web apps don't expose inbound HTTP headers, so this can't
  * check Meta's X-Hub-Signature-256 HMAC. As a substitute, the webhook
@@ -84,6 +87,10 @@ function doPost(e) {
           processMetaLead_(change.value.leadgen_id, change.value.created_time);
         }
       });
+
+      if (body.object === 'instagram' && typeof processInstagramMessagingEvent_ === 'function') {
+        (entry.messaging || []).forEach((event) => processInstagramMessagingEvent_(event));
+      }
     });
   } catch (err) {
     console.error('Failed to process Meta webhook payload: ' + err);
