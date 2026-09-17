@@ -105,6 +105,9 @@
       <option value="New">New</option>
       <option value="Contacted">Contacted</option>
     </select>
+    <select id="jobAdFilter">
+      <option value="all">All job ads</option>
+    </select>
     <input id="search" type="text" placeholder="Search name, email, company…">
     <div class="spacer"></div>
     <span class="refresh-note" id="refreshNote">Refreshing every 30s</span>
@@ -118,16 +121,30 @@
 
     function render() {
       const filterStatus = document.getElementById('statusFilter').value;
+      const filterJobAd = document.getElementById('jobAdFilter').value;
       const q = document.getElementById('search').value.trim().toLowerCase();
 
       const filtered = allLeads.filter((lead) => {
         if (filterStatus !== 'all' && lead['Status'] !== filterStatus) return false;
+        if (filterJobAd !== 'all' && lead['Job Ad'] !== filterJobAd) return false;
         if (!q) return true;
         return Object.values(lead).some((v) => String(v || '').toLowerCase().includes(q));
       });
 
+      renderJobAdOptions();
       renderStats();
       renderTable(filtered);
+    }
+
+    function renderJobAdOptions() {
+      const select = document.getElementById('jobAdFilter');
+      const current = select.value;
+      const jobAds = Array.from(new Set(allLeads.map((l) => l['Job Ad']).filter(Boolean))).sort();
+
+      select.innerHTML = '<option value="all">All job ads</option>' +
+        jobAds.map((ja) => `<option value="${escapeHtml(ja)}">${escapeHtml(ja)}</option>`).join('');
+
+      if (jobAds.includes(current)) select.value = current;
     }
 
     function renderStats() {
@@ -229,6 +246,7 @@
     }
 
     document.getElementById('statusFilter').addEventListener('change', render);
+    document.getElementById('jobAdFilter').addEventListener('change', render);
     document.getElementById('search').addEventListener('input', render);
 
     loadLeads();

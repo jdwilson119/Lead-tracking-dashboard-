@@ -227,21 +227,30 @@ any endpoint if a native module is missing.
 
 **0. Set up the Job Ad mapping.** Add a `Job Ad Mapping` tab to the same
 spreadsheet with columns: `Facebook Form ID`, `Facebook Form Name`,
-`JobAdder Job Ad ID`, `Job Title`. Fill in one row per active role/ad —
-whoever launches a new Facebook lead ad for a role needs to add a row
-here pointing at that role's JobAdder Job Ad ID. This is the one manual
+`JobAdder Job Ad ID`, `Job Title`, `Client`. Fill in one row per active
+ad — whoever launches a new Facebook lead ad needs to add a row here
+pointing at that specific ad's JobAdder Job Ad ID. This is the one manual
 step that can't be automated away, since it's a business decision (which
-ad is for which role), not data already sitting in either system.
+ad is for which role/client), not data already sitting in either system.
+
+The mapping is keyed on the **Facebook Form ID**, not the job title — so
+running several ads with the identical title (e.g. "Driller Offsider" for
+three different clients at once) works correctly: each ad is a distinct
+Facebook form with its own Form ID, so each still resolves to the right
+Job Ad. The `Client` column exists so the dashboard can tell those apart
+at a glance instead of showing "Driller Offsider" three times with no way
+to distinguish them.
 
 **Create the candidate and link them to the Job Ad** (append to the Meta
 → Sheet scenario, after the Google Sheets "Add a Row" step):
 
 1. **Google Sheets — Search Rows** on `Job Ad Mapping`, matching the
    Facebook Form ID from the trigger's payload, to get the `JobAdder Job
-   Ad ID` and `Job Title`.
+   Ad ID`, `Job Title`, and `Client`.
 2. **Google Sheets — Update a Row** (the lead row just added) — set its
-   `Job Ad` column to the matched `Job Title`, so it's visible on the
-   dashboard which role each lead is for.
+   `Job Ad` column to `Job Title` + " — " + `Client` (e.g. "Driller
+   Offsider — Coastal Mining Co."), so it's clear on the dashboard both
+   which role and which client each lead is for.
 3. **JobAdder — Search Candidates by Email** (or `GET /v2/candidates?email=...`
    via HTTP) to check whether this person already exists in JobAdder.
 4. **Router**, branching on whether step 3 found a match:
