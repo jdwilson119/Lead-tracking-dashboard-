@@ -1,0 +1,601 @@
+<title>Outreach Noir</title>
+<meta name="description" content="A black-and-gold live command center for Instagram outreach: follower growth, DM volume, reply status, lead scoring, and booked sales calls.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --bg:#0a0a0c;
+    --surface:#141317;
+    --surface-2:#1b1a20;
+    --surface-3:#221f27;
+    --hairline:rgba(212,175,90,0.16);
+    --hairline-strong:rgba(212,175,90,0.32);
+    --ink:#f3ede0;
+    --ink-dim:#b8b0a0;
+    --ink-faint:#7d7669;
+    --gold:#cda449;
+    --gold-bright:#e9c976;
+    --gold-dim:#8a7038;
+    --track:#26232b;
+    --good:#3fc482;
+    --good-dim:rgba(63,196,130,0.16);
+    --warn:#e3a23a;
+    --warn-dim:rgba(227,162,58,0.16);
+    --bad:#e0555a;
+    --bad-dim:rgba(224,85,90,0.16);
+    --shadow:0 20px 50px -20px rgba(0,0,0,0.6);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;
+    margin:0;
+    padding-inline:clamp(16px,4vw,40px);
+    padding-block:24px 60px;
+    font-variant-numeric:tabular-nums;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Fraunces',Georgia,serif; margin:0;}
+
+  .wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:28px;}
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+    border-bottom:1px solid var(--hairline);
+    padding-bottom:20px;
+  }
+  .brand{display:flex;flex-direction:column;gap:6px;}
+  .brand .eyebrow{
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);
+    font-weight:700;display:flex;align-items:center;gap:8px;
+  }
+  .brand .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(205,164,73,0.18);}
+  .brand h1{font-size:clamp(26px,3.4vw,38px);font-weight:600;letter-spacing:.01em;color:var(--ink);}
+  .brand h1 em{font-style:normal;color:var(--gold-bright);}
+  .brand .sub{color:var(--ink-faint);font-size:13px;max-width:52ch;}
+
+  .live-chip{
+    display:flex;align-items:center;gap:20px;
+    background:linear-gradient(180deg,var(--surface-2),var(--surface));
+    border:1px solid var(--hairline);
+    border-radius:14px;padding:12px 18px;box-shadow:var(--shadow);
+  }
+  .live-chip .pulse{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--good);}
+  .pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--good);position:relative;}
+  .pulse-dot::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid var(--good);animation:ping 1.8s cubic-bezier(.4,0,.6,1) infinite;}
+  @keyframes ping{0%{transform:scale(.6);opacity:.9;}70%{transform:scale(1.8);opacity:0;}100%{opacity:0;}}
+  .live-chip .stamp{font-size:12px;color:var(--ink-faint);}
+  .live-chip .stamp b{color:var(--ink-dim);font-weight:600;}
+
+  @media (prefers-reduced-motion: reduce){
+    .pulse-dot::after{animation:none;}
+    *{scroll-behavior:auto !important;}
+  }
+
+  /* ---------- KPI row ---------- */
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+  @media (max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr);}}
+  @media (max-width:640px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+
+  .kpi{
+    background:linear-gradient(155deg,var(--surface-2) 0%,var(--surface) 70%);
+    border:1px solid var(--hairline);
+    border-radius:16px;
+    padding:18px 18px 16px;
+    position:relative;
+    overflow:hidden;
+    display:flex;flex-direction:column;gap:10px;
+    min-height:118px;
+  }
+  .kpi::before{
+    content:"";position:absolute;top:-40%;right:-30%;width:140px;height:140px;border-radius:50%;
+    background:radial-gradient(circle,rgba(205,164,73,0.16),transparent 70%);
+  }
+  .kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;}
+  .kpi .value{font-family:'Fraunces',serif;font-size:clamp(26px,2.6vw,32px);color:var(--ink);font-weight:600;display:flex;align-items:baseline;gap:8px;}
+  .kpi .value .unit{font-family:'Manrope',sans-serif;font-size:13px;color:var(--ink-faint);font-weight:600;}
+  .kpi .delta{font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;width:fit-content;padding:3px 8px;border-radius:999px;}
+  .kpi .delta.up{color:var(--good);background:var(--good-dim);}
+  .kpi .delta.flat{color:var(--gold);background:rgba(205,164,73,0.14);}
+  .kpi.accent{border-color:var(--hairline-strong);}
+  .kpi.accent .value{color:var(--gold-bright);}
+
+  /* ---------- Section shell ---------- */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--hairline);
+    border-radius:18px;
+    padding:22px clamp(16px,3vw,26px);
+    box-shadow:var(--shadow);
+  }
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .panel-head h2{font-size:19px;color:var(--ink);font-weight:600;}
+  .panel-head .desc{font-size:12.5px;color:var(--ink-faint);margin-top:4px;max-width:48ch;}
+
+  /* ---------- Donuts ---------- */
+  .donut-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:900px){.donut-row{grid-template-columns:1fr;}}
+  .donut-card{
+    background:var(--surface-2);border:1px solid var(--hairline);border-radius:16px;
+    padding:20px;display:flex;flex-direction:column;align-items:center;gap:14px;
+  }
+  .donut-card h3{font-size:14px;color:var(--ink-dim);font-weight:600;text-align:center;}
+  .donut-wrap{position:relative;width:168px;height:168px;}
+  .donut-wrap svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .donut-center{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;
+  }
+  .donut-center .pct{font-family:'Fraunces',serif;font-size:30px;font-weight:600;color:var(--ink);}
+  .donut-center .pct span{font-size:16px;color:var(--ink-faint);}
+  .donut-center .cap{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;}
+  .legend{display:flex;flex-direction:column;gap:7px;width:100%;}
+  .legend-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--ink-dim);}
+  .legend-row .key{display:flex;align-items:center;gap:8px;}
+  .swatch{width:9px;height:9px;border-radius:3px;flex:none;}
+  .legend-row b{color:var(--ink);font-weight:700;}
+
+  /* ---------- Live feed ---------- */
+  .feed-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:820px){.feed-grid{grid-template-columns:1fr;}}
+  .feed-col{background:var(--surface-2);border:1px solid var(--hairline);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:360px;max-height:420px;}
+  .feed-col-head{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 8px;border-bottom:1px solid var(--hairline);}
+  .feed-col-head .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;display:flex;align-items:center;gap:7px;}
+  .tag.in{color:var(--good);}
+  .tag.out{color:var(--gold-bright);}
+  .tag .arrow{font-size:13px;}
+  .feed-count{font-size:11px;color:var(--ink-faint);}
+  .feed-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1;}
+  .feed-list::-webkit-scrollbar{width:6px;}
+  .feed-list::-webkit-scrollbar-thumb{background:var(--track);border-radius:8px;}
+  .feed-item{
+    display:flex;gap:10px;align-items:flex-start;
+    background:var(--surface);border:1px solid var(--hairline);border-radius:10px;padding:9px 10px;
+    animation:slidein .4s ease;
+  }
+  @keyframes slidein{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+  .feed-item .avatar{width:30px;height:30px;flex:none;}
+  .feed-item .body{min-width:0;flex:1;}
+  .feed-item .row1{display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
+  .feed-item .handle{font-size:12.5px;font-weight:700;color:var(--ink);}
+  .feed-item .time{font-size:10.5px;color:var(--ink-faint);flex:none;}
+  .feed-item .msg{font-size:12.5px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  /* ---------- Avatars ---------- */
+  .avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;color:#100e08;font-size:12px;position:relative;flex:none;}
+  .avatar.ring-hot{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--bad);}
+  .avatar.ring-warm{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--warn);}
+  .avatar.ring-cold{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--ink-faint);}
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .toolbar input[type="search"]{
+    background:var(--surface-2);border:1px solid var(--hairline);border-radius:10px;color:var(--ink);
+    padding:9px 12px;font-size:13px;font-family:inherit;min-width:200px;
+  }
+  .toolbar input::placeholder{color:var(--ink-faint);}
+  .chip-filter{
+    display:flex;gap:6px;background:var(--surface-2);border:1px solid var(--hairline);border-radius:10px;padding:4px;
+  }
+  .chip-filter button{
+    background:transparent;border:none;color:var(--ink-faint);font-size:12px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:inherit;
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip-filter button .dot{width:7px;height:7px;border-radius:50%;}
+  .chip-filter button.active{background:var(--surface-3);color:var(--ink);}
+  .chip-filter button.active.hot .dot,.chip-filter button .dot.hot{background:var(--bad);}
+  .chip-filter button .dot.warm{background:var(--warn);}
+  .chip-filter button .dot.cold{background:var(--ink-faint);}
+
+  /* ---------- Table ---------- */
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;min-width:840px;}
+  thead th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);
+    font-weight:700;padding:0 10px 10px;border-bottom:1px solid var(--hairline);white-space:nowrap;
+  }
+  tbody td{padding:10px;border-bottom:1px solid var(--hairline);font-size:13px;color:var(--ink-dim);vertical-align:middle;}
+  tbody tr:hover{background:rgba(205,164,73,0.045);}
+  .who{display:flex;align-items:center;gap:10px;}
+  .who .names{display:flex;flex-direction:column;line-height:1.25;}
+  .who .handle{color:var(--ink);font-weight:700;font-size:13px;}
+  .who .name{font-size:11.5px;color:var(--ink-faint);}
+  .light{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:12px;padding:4px 9px;border-radius:999px;}
+  .light .dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 8px currentColor;}
+  .light.hot{color:var(--bad);background:var(--bad-dim);}
+  .light.warm{color:var(--warn);background:var(--warn-dim);}
+  .light.cold{color:var(--ink-faint);background:rgba(255,255,255,0.05);}
+  .light .dot{background:currentColor;}
+  .status-pill{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;display:inline-block;}
+  .status-pill.replied{color:var(--good);background:var(--good-dim);}
+  .status-pill.waiting{color:var(--ink-faint);background:rgba(255,255,255,0.05);}
+  .call-pill{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;}
+  .call-pill.booked{color:var(--gold-bright);background:rgba(233,201,118,0.14);}
+  .call-pill.none{color:var(--ink-faint);}
+  .msg-preview{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-faint);font-size:12.5px;}
+
+  .footnote{font-size:11.5px;color:var(--ink-faint);text-align:center;padding-top:8px;}
+  .footnote a{color:var(--gold);}
+</style>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="eyebrow"><span class="dot"></span> Outreach Command Center</div>
+      <h1>Noir <em>&amp; Gold</em> — Instagram Outreach</h1>
+      <div class="sub">Follower growth, DM throughput, reply status, and lead scoring for the outreach account — updating in real time.</div>
+    </div>
+    <div class="live-chip">
+      <div class="pulse"><span class="pulse-dot"></span> Live</div>
+      <div class="stamp">Last event <b id="lastEventTime">just now</b></div>
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Performance Overview</h2>
+        <div class="desc">Reply rate, lead-quality mix, and call-booking conversion across every account messaged.</div>
+      </div>
+    </div>
+    <div class="donut-row" id="donutRow"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Live Message Stream</h2>
+        <div class="desc">Simulated real-time feed of DMs arriving and going out on the account.</div>
+      </div>
+    </div>
+    <div class="feed-grid">
+      <div class="feed-col">
+        <div class="feed-col-head">
+          <span class="tag in"><span class="arrow">↓</span> Incoming</span>
+          <span class="feed-count" id="inCount">0 today</span>
+        </div>
+        <div class="feed-list" id="feedIn"></div>
+      </div>
+      <div class="feed-col">
+        <div class="feed-col-head">
+          <span class="tag out"><span class="arrow">↑</span> Outgoing</span>
+          <span class="feed-count" id="outCount">0 today</span>
+        </div>
+        <div class="feed-list" id="feedOut"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Accounts Messaged</h2>
+        <div class="desc">Every contact reached, with reply status, lead-potential rating, and sales-call outcome.</div>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="searchBox" placeholder="Search handle or name…">
+        <div class="chip-filter" id="potentialFilter">
+          <button data-f="all" class="active">All</button>
+          <button data-f="hot"><span class="dot hot"></span>Hot</button>
+          <button data-f="warm"><span class="dot warm"></span>Warm</button>
+          <button data-f="cold"><span class="dot cold"></span>Cold</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Last message</th>
+            <th>Potential</th>
+            <th>Reply status</th>
+            <th>Sales call</th>
+            <th>Msgs</th>
+            <th>Last activity</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footnote">Demo data, simulated live for illustration — connect a real Instagram/Meta data feed to replace it.</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var COLORS = {good:'#3fc482', warn:'#e3a23a', bad:'#e0555a', gold:'#cda449', goldBright:'#e9c976', faint:'#7d7669', track:'#26232b'};
+  var AVATAR_PALETTE = ['#cda449','#8a5a44','#4a6d7c','#7c5a8a','#5a7c5e','#a4553f','#5a6b8a','#8a7638'];
+
+  function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}return Math.abs(h);}
+  function pick(arr,seed){return arr[seed%arr.length];}
+  function rand(seed){var x=Math.sin(seed)*10000;return x-Math.floor(x);}
+
+  var FIRST = ["Maya","Liam","Sofia","Ethan","Zara","Noah","Priya","Jonas","Amara","Leo","Ines","Marco","Talia","Diego","Nadia","Owen","Freya","Kian","Elena","Theo","Rosa","Milo","Anya","Sami","Cleo","Ravi","Nora","Felix","Ida","Yusuf"];
+  var LAST = ["Rivera","Chen","Okafor","Bennett","Novak","Suárez","Larsen","Patel","Moreau","Kimura","Haddad","Wren","Adeyemi","Costa","Berg"];
+  var BIZ = ["studio","atelier","collective","co","brand","edits","creative","fit","design","house","media","lab"];
+  var OPENERS_IN = [
+    "hey! saw your last post, love this 😍","how much for the package you mentioned?","is this still available?",
+    "can you tell me more about pricing?","just followed you, your feed is stunning","do you offer custom orders?",
+    "what's included in the starter tier?","following up on my question from earlier","can we hop on a call this week?",
+    "thanks for the info, that's really helpful!","do you have any slots open in October?","this looks exactly like what I need"
+  ];
+  var OPENERS_OUT = [
+    "Hi! Thanks so much for reaching out 🙌","Happy to walk you through it — got 15 min this week?",
+    "Sending over our pricing sheet now!","Absolutely, here's how it works…","Would Thursday 2pm work for a quick call?",
+    "Appreciate the kind words! Let me know if you have questions.","Here's our booking link whenever you're ready.",
+    "Just checking in — did you get a chance to see the last message?","Glad it's useful! Anything else I can clarify?",
+    "We do! Let's find a time that suits you."
+  ];
+
+  function genHandle(seed){
+    var f=pick(FIRST,seed), l=pick(LAST,seed>>2);
+    var style = seed%4;
+    if(style===0) return (f+"."+l).toLowerCase();
+    if(style===1) return (f+l+ (10+seed%89)).toLowerCase();
+    if(style===2) return (f+"_"+pick(BIZ,seed>>3)).toLowerCase();
+    return (l+"."+pick(BIZ,seed>>4)).toLowerCase();
+  }
+
+  function initialsFor(name){
+    var parts = name.split(" ");
+    return (parts[0][0]+(parts[1]?parts[1][0]:"")).toUpperCase();
+  }
+
+  function avatarHTML(name, seed, size, ringTier){
+    var bg = pick(AVATAR_PALETTE, seed);
+    var ringClass = ringTier ? (" ring-"+ringTier) : "";
+    return '<div class="avatar'+ringClass+'" style="width:'+size+'px;height:'+size+'px;background:'+bg+';font-size:'+Math.round(size*0.4)+'px;">'+initialsFor(name)+'</div>';
+  }
+
+  // ---------- Build contact roster ----------
+  var N = 34;
+  var contacts = [];
+  for(var i=0;i<N;i++){
+    var seed = hashStr("lead-"+i+"-outreach");
+    var first = pick(FIRST, seed), last = pick(LAST, seed>>1);
+    var name = first+" "+last;
+    var handle = genHandle(seed);
+    var r = rand(seed*13.7);
+    var potential = r>0.72 ? "hot" : (r>0.38 ? "warm" : "cold");
+    var repliedChance = potential==="hot"?0.88:potential==="warm"?0.6:0.28;
+    var replied = rand(seed*3.1) < repliedChance;
+    var callChance = potential==="hot"?0.42:potential==="warm"?0.08:0.01;
+    var callBooked = replied && rand(seed*7.7) < callChance;
+    var msgCount = 1 + Math.floor(rand(seed*5.3)*9);
+    var lastMsg = replied ? pick(OPENERS_IN, seed>>2) : pick(OPENERS_OUT, seed>>2);
+    var hoursAgo = Math.floor(rand(seed*9.1)*168); // up to 7 days
+    contacts.push({
+      id:i, seed:seed, name:name, handle:handle, potential:potential,
+      replied:replied, callBooked:callBooked, msgCount:msgCount,
+      lastMsg:lastMsg, hoursAgo:hoursAgo
+    });
+  }
+  contacts.sort(function(a,b){return a.hoursAgo-b.hoursAgo;});
+
+  // ---------- State (persisted per-viewer only) ----------
+  var state = {
+    followers24h: 47,
+    followers7d: 312,
+    messagesSent: contacts.reduce(function(s,c){return s + Math.ceil(c.msgCount*0.55);},0),
+    accountsMessaged: N,
+    callsBooked: contacts.filter(function(c){return c.callBooked;}).length,
+    feedIn: [], feedOut: [],
+    startedAt: Date.now()
+  };
+
+  try{
+    var saved = JSON.parse(localStorage.getItem('outreach_noir_state_v1')||'null');
+    if(saved && saved.startedAt){ state = saved; }
+  }catch(e){}
+
+  function persist(){
+    try{ localStorage.setItem('outreach_noir_state_v1', JSON.stringify(state)); }catch(e){}
+  }
+
+  function timeAgo(hrs){
+    if(hrs<1) return "just now";
+    if(hrs<24) return hrs+"h ago";
+    var d=Math.floor(hrs/24);
+    return d+"d ago";
+  }
+  function clock(){
+    var d=new Date();
+    return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+
+  // ---------- KPI render ----------
+  function renderKPIs(){
+    var replyRate = Math.round(100*contacts.filter(function(c){return c.replied;}).length/contacts.length);
+    var kpis = [
+      {label:"New followers · 24h", value:"+"+state.followers24h, delta:"↑ 6.2% vs prior 24h", accent:false},
+      {label:"New followers · 7d", value:"+"+state.followers7d, delta:"↑ 14.8% vs prior week", accent:false},
+      {label:"Messages sent", value:state.messagesSent.toLocaleString(), delta:reply_delta(), accent:false},
+      {label:"Accounts messaged", value:state.accountsMessaged, delta:replyRate+"% reply rate", accent:false},
+      {label:"Calls booked", value:state.callsBooked, delta:"from outreach", accent:true}
+    ];
+    function reply_delta(){ return "across "+state.accountsMessaged+" threads"; }
+    var html = kpis.map(function(k){
+      return '<div class="kpi'+(k.accent?' accent':'')+'">'+
+        '<div class="label">'+k.label+'</div>'+
+        '<div class="value">'+k.value+'</div>'+
+        '<div class="delta up">'+k.delta+'</div>'+
+      '</div>';
+    }).join('');
+    document.getElementById('kpiRow').innerHTML = html;
+  }
+
+  // ---------- Donut chart ----------
+  function donutSVG(segments, size, stroke){
+    var r = (size-stroke)/2;
+    var c = size/2;
+    var circumference = 2*Math.PI*r;
+    var offset = 0;
+    var parts = '<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke="'+COLORS.track+'" stroke-width="'+stroke+'"></circle>';
+    segments.forEach(function(seg){
+      var len = circumference*(seg.value/100);
+      var gap = 2; // small surface gap between segments
+      var dash = Math.max(len-gap,0);
+      parts += '<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke="'+seg.color+'" stroke-width="'+stroke+'" ' +
+        'stroke-linecap="round" stroke-dasharray="'+dash+' '+(circumference-dash)+'" stroke-dashoffset="'+(-offset)+'"></circle>';
+      offset += len;
+    });
+    return '<svg viewBox="0 0 '+size+' '+size+'">'+parts+'</svg>';
+  }
+
+  function donutCard(title, segments, centerPct, centerCap){
+    var legend = segments.map(function(s){
+      return '<div class="legend-row"><span class="key"><span class="swatch" style="background:'+s.color+'"></span>'+s.label+'</span><b>'+s.value+'%</b></div>';
+    }).join('');
+    return '<div class="donut-card">'+
+      '<h3>'+title+'</h3>'+
+      '<div class="donut-wrap">'+donutSVG(segments,168,16)+
+        '<div class="donut-center"><div class="pct">'+centerPct+'<span>%</span></div><div class="cap">'+centerCap+'</div></div>'+
+      '</div>'+
+      '<div class="legend">'+legend+'</div>'+
+    '</div>';
+  }
+
+  function renderDonuts(){
+    var total = contacts.length;
+    var repliedN = contacts.filter(function(c){return c.replied;}).length;
+    var waitingN = total-repliedN;
+    var replyPct = Math.round(100*repliedN/total);
+
+    var hotN = contacts.filter(function(c){return c.potential==='hot';}).length;
+    var warmN = contacts.filter(function(c){return c.potential==='warm';}).length;
+    var coldN = contacts.filter(function(c){return c.potential==='cold';}).length;
+    var hotPct = Math.round(100*hotN/total), warmPct=Math.round(100*warmN/total), coldPct=100-hotPct-warmPct;
+
+    var callPct = Math.round(100*state.callsBooked/total);
+
+    var d1 = donutCard("Reply Rate", [
+      {label:"Replied", value:replyPct, color:COLORS.good},
+      {label:"Awaiting reply", value:100-replyPct, color:COLORS.track==='#26232b'?'#3a3641':COLORS.track}
+    ], replyPct, repliedN+" of "+total+" replied");
+
+    var d2 = donutCard("Lead Potential Mix", [
+      {label:"Hot", value:hotPct, color:COLORS.bad},
+      {label:"Warm", value:warmPct, color:COLORS.warn},
+      {label:"Cold", value:coldPct, color:COLORS.faint}
+    ], hotPct, "hot leads");
+
+    var d3 = donutCard("Call Booking Rate", [
+      {label:"Booked a call", value:callPct, color:COLORS.goldBright},
+      {label:"Not yet booked", value:100-callPct, color:'#3a3641'}
+    ], callPct, state.callsBooked+" calls booked");
+
+    document.getElementById('donutRow').innerHTML = d1+d2+d3;
+  }
+
+  // ---------- Table ----------
+  var activeFilter = 'all';
+  function renderTable(){
+    var q = (document.getElementById('searchBox').value||'').toLowerCase();
+    var rows = contacts.filter(function(c){
+      if(activeFilter!=='all' && c.potential!==activeFilter) return false;
+      if(q && c.handle.toLowerCase().indexOf(q)<0 && c.name.toLowerCase().indexOf(q)<0) return false;
+      return true;
+    });
+    var html = rows.map(function(c){
+      var lightClass = c.potential;
+      var lightLabel = c.potential.charAt(0).toUpperCase()+c.potential.slice(1);
+      var statusHtml = c.replied
+        ? '<span class="status-pill replied">Replied</span>'
+        : '<span class="status-pill waiting">Awaiting reply</span>';
+      var callHtml = c.callBooked
+        ? '<span class="call-pill booked">📅 Call booked</span>'
+        : '<span class="call-pill none">—</span>';
+      return '<tr>'+
+        '<td><div class="who">'+avatarHTML(c.name,c.seed,34,c.potential)+
+          '<div class="names"><span class="handle">@'+c.handle+'</span><span class="name">'+c.name+'</span></div></div></td>'+
+        '<td><div class="msg-preview">'+c.lastMsg+'</div></td>'+
+        '<td><span class="light '+lightClass+'"><span class="dot"></span>'+lightLabel+'</span></td>'+
+        '<td>'+statusHtml+'</td>'+
+        '<td>'+callHtml+'</td>'+
+        '<td>'+c.msgCount+'</td>'+
+        '<td>'+timeAgo(c.hoursAgo)+'</td>'+
+      '</tr>';
+    }).join('');
+    document.getElementById('tableBody').innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);padding:24px;">No accounts match this filter.</td></tr>';
+  }
+
+  document.getElementById('searchBox').addEventListener('input', renderTable);
+  document.getElementById('potentialFilter').addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if(!btn) return;
+    activeFilter = btn.getAttribute('data-f');
+    Array.prototype.forEach.call(document.querySelectorAll('#potentialFilter button'), function(b){b.classList.toggle('active', b===btn);});
+    renderTable();
+  });
+
+  // ---------- Live feed simulation ----------
+  var feedInEl = document.getElementById('feedIn');
+  var feedOutEl = document.getElementById('feedOut');
+  var MAX_FEED = 18;
+
+  function renderFeedItem(entry){
+    var seed = hashStr(entry.handle);
+    return '<div class="feed-item">'+
+      avatarHTML(entry.handle, seed, 30)+
+      '<div class="body"><div class="row1"><span class="handle">@'+entry.handle+'</span><span class="time">'+entry.time+'</span></div>'+
+      '<div class="msg">'+entry.msg+'</div></div></div>';
+  }
+
+  function renderFeeds(){
+    feedInEl.innerHTML = state.feedIn.map(renderFeedItem).join('') || '<div style="color:var(--ink-faint);font-size:12.5px;padding:10px;">No incoming messages yet.</div>';
+    feedOutEl.innerHTML = state.feedOut.map(renderFeedItem).join('') || '<div style="color:var(--ink-faint);font-size:12.5px;padding:10px;">No outgoing messages yet.</div>';
+    document.getElementById('inCount').textContent = state.feedIn.length+" today";
+    document.getElementById('outCount').textContent = state.feedOut.length+" today";
+  }
+
+  function pushLiveEvent(){
+    var isIncoming = Math.random() < 0.5;
+    var c = contacts[Math.floor(Math.random()*contacts.length)];
+    var msg = isIncoming ? pick(OPENERS_IN, Math.floor(Math.random()*OPENERS_IN.length)) : pick(OPENERS_OUT, Math.floor(Math.random()*OPENERS_OUT.length));
+    var entry = {handle:c.handle, msg:msg, time:clock()};
+    if(isIncoming){
+      state.feedIn.unshift(entry);
+      if(state.feedIn.length>MAX_FEED) state.feedIn.pop();
+    } else {
+      state.feedOut.unshift(entry);
+      if(state.feedOut.length>MAX_FEED) state.feedOut.pop();
+      state.messagesSent += 1;
+    }
+    document.getElementById('lastEventTime').textContent = clock();
+    renderFeeds();
+    renderKPIs();
+    persist();
+  }
+
+  // seed initial feed if empty
+  if(state.feedIn.length===0 && state.feedOut.length===0){
+    for(var k=0;k<6;k++){ pushLiveEvent(); }
+  } else {
+    renderFeeds();
+  }
+
+  // ---------- Init ----------
+  renderKPIs();
+  renderDonuts();
+  renderTable();
+
+  var tickMs = 5000 + Math.random()*3000;
+  function loop(){
+    pushLiveEvent();
+    setTimeout(loop, 4500 + Math.random()*4500);
+  }
+  setTimeout(loop, tickMs);
+
+})();
+</script>
