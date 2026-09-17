@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card-bg: #ffffff;
+      --text: #1f2430;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --new: #2563eb;
+      --contacted: #16a34a;
+      --accent: #4f46e5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      min-width: 120px;
+    }
+    .stat-card .value { font-size: 24px; font-weight: 600; }
+    .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .toolbar select, .toolbar input {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      background: white;
+    }
+    .toolbar .spacer { flex: 1; }
+    .toolbar .refresh-note { font-size: 12px; color: var(--muted); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th { background: #fafbfc; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+    .badge.new { background: var(--new); }
+    .badge.contacted { background: var(--contacted); }
+
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-contact { background: var(--accent); color: white; }
+    .btn-contact:hover { background: #4338ca; }
+    .btn-revert { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
+    .btn-revert:hover { background: #e5e7eb; }
+
+    .empty { padding: 30px; text-align: center; color: var(--muted); }
+    .notes-cell { max-width: 220px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Lead Tracking Dashboard</h1>
+  <div class="subtitle">Reads directly from the response sheet — mark a lead contacted here and the sheet updates instantly.</div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <select id="statusFilter">
+      <option value="all">All statuses</option>
+      <option value="New">New</option>
+      <option value="Contacted">Contacted</option>
+    </select>
+    <input id="search" type="text" placeholder="Search name, email, company…">
+    <div class="spacer"></div>
+    <span class="refresh-note" id="refreshNote">Refreshing every 30s</span>
+  </div>
+
+  <div id="tableWrap"></div>
+
+  <script>
+    let allLeads = [];
+    const POLL_MS = 30000;
+
+    function render() {
+      const filterStatus = document.getElementById('statusFilter').value;
+      const q = document.getElementById('search').value.trim().toLowerCase();
+
+      const filtered = allLeads.filter((lead) => {
+        if (filterStatus !== 'all' && lead['Status'] !== filterStatus) return false;
+        if (!q) return true;
+        return Object.values(lead).some((v) => String(v || '').toLowerCase().includes(q));
+      });
+
+      renderStats();
+      renderTable(filtered);
+    }
+
+    function renderStats() {
+      const total = allLeads.length;
+      const contacted = allLeads.filter((l) => l['Status'] === 'Contacted').length;
+      const fresh = total - contacted;
+      const statsEl = document.getElementById('stats');
+      statsEl.innerHTML = [
+        ['Total Leads', total],
+        ['New', fresh],
+        ['Contacted', contacted]
+      ].map(([label, value]) => `
+        <div class="stat-card">
+          <div class="value">${value}</div>
+          <div class="label">${label}</div>
+        </div>
+      `).join('');
+    }
+
+    function fieldOrder(lead) {
+      const priority = ['Name', 'Full Name', 'Email', 'Email Address', 'Phone', 'Phone Number', 'Company', 'Job Title', 'Lead Source', 'Notes'];
+      const keys = Object.keys(lead).filter((k) => k !== 'rowNumber' && k !== 'Status' && k !== 'Contacted Date' && k !== 'Contacted By' && k !== 'Timestamp');
+      keys.sort((a, b) => {
+        const pa = priority.indexOf(a), pb = priority.indexOf(b);
+        if (pa === -1 && pb === -1) return 0;
+        if (pa === -1) return 1;
+        if (pb === -1) return -1;
+        return pa - pb;
+      });
+      return keys;
+    }
+
+    function renderTable(leads) {
+      const wrap = document.getElementById('tableWrap');
+      if (!leads.length) {
+        wrap.innerHTML = '<div class="empty">No leads match.</div>';
+        return;
+      }
+
+      const cols = fieldOrder(leads[0]);
+      const headerRow = cols.map((c) => `<th>${c}</th>`).join('') +
+        '<th>Status</th><th>Contacted</th><th></th>';
+
+      const rows = leads.map((lead) => {
+        const cells = cols.map((c) => `<td class="${c === 'Notes' ? 'notes-cell' : ''}">${lead[c] || ''}</td>`).join('');
+        const isContacted = lead['Status'] === 'Contacted';
+        const badge = isContacted
+          ? '<span class="badge contacted">Contacted</span>'
+          : '<span class="badge new">New</span>';
+        const contactedInfo = isContacted
+          ? `${lead['Contacted Date'] || ''}${lead['Contacted By'] ? ' by ' + lead['Contacted By'] : ''}`
+          : '—';
+        const action = isContacted
+          ? `<button class="btn-revert" onclick="revert(${lead.rowNumber})">Revert to New</button>`
+          : `<button class="btn-contact" onclick="contact(${lead.rowNumber})">Mark Contacted</button>`;
+
+        return `<tr>${cells}<td>${badge}</td><td>${contactedInfo}</td><td>${action}</td></tr>`;
+      }).join('');
+
+      wrap.innerHTML = `<table><thead><tr>${headerRow}</tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function contact(rowNumber) {
+      google.script.run.withSuccessHandler(onLeadsUpdated).markContacted(rowNumber);
+    }
+
+    function revert(rowNumber) {
+      google.script.run.withSuccessHandler(onLeadsUpdated).markNew(rowNumber);
+    }
+
+    function onLeadsUpdated(leads) {
+      allLeads = leads;
+      render();
+    }
+
+    function loadLeads() {
+      google.script.run.withSuccessHandler(onLeadsUpdated).getLeads();
+    }
+
+    document.getElementById('statusFilter').addEventListener('change', render);
+    document.getElementById('search').addEventListener('input', render);
+
+    loadLeads();
+    setInterval(loadLeads, POLL_MS);
+  </script>
+</body>
+</html>
