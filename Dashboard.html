@@ -147,8 +147,17 @@
       `).join('');
     }
 
+    function escapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function fieldOrder(lead) {
-      const priority = ['Name', 'Full Name', 'Email', 'Email Address', 'Phone', 'Phone Number', 'Company', 'Job Title', 'Lead Source', 'Notes'];
+      const priority = ['Name', 'Full Name', 'Email', 'Email Address', 'Phone', 'Phone Number', 'Company', 'Job Title', 'Lead Source', 'Notes', 'CV Link'];
       const keys = Object.keys(lead).filter((k) => k !== 'rowNumber' && k !== 'Status' && k !== 'Contacted Date' && k !== 'Contacted By' && k !== 'Timestamp');
       keys.sort((a, b) => {
         const pa = priority.indexOf(a), pb = priority.indexOf(b);
@@ -160,6 +169,18 @@
       return keys;
     }
 
+    function renderCell(lead, col) {
+      const value = lead[col];
+      if (col === 'CV Link' && value) {
+        // Only allow http(s) links through as a clickable anchor; anything else renders as plain (escaped) text.
+        const isSafeUrl = /^https?:\/\//i.test(String(value));
+        return isSafeUrl
+          ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">View CV</a>`
+          : escapeHtml(value);
+      }
+      return escapeHtml(value);
+    }
+
     function renderTable(leads) {
       const wrap = document.getElementById('tableWrap');
       if (!leads.length) {
@@ -168,17 +189,17 @@
       }
 
       const cols = fieldOrder(leads[0]);
-      const headerRow = cols.map((c) => `<th>${c}</th>`).join('') +
+      const headerRow = cols.map((c) => `<th>${escapeHtml(c)}</th>`).join('') +
         '<th>Status</th><th>Contacted</th><th></th>';
 
       const rows = leads.map((lead) => {
-        const cells = cols.map((c) => `<td class="${c === 'Notes' ? 'notes-cell' : ''}">${lead[c] || ''}</td>`).join('');
+        const cells = cols.map((c) => `<td class="${c === 'Notes' ? 'notes-cell' : ''}">${renderCell(lead, c)}</td>`).join('');
         const isContacted = lead['Status'] === 'Contacted';
         const badge = isContacted
           ? '<span class="badge contacted">Contacted</span>'
           : '<span class="badge new">New</span>';
         const contactedInfo = isContacted
-          ? `${lead['Contacted Date'] || ''}${lead['Contacted By'] ? ' by ' + lead['Contacted By'] : ''}`
+          ? `${escapeHtml(lead['Contacted Date'])}${lead['Contacted By'] ? ' by ' + escapeHtml(lead['Contacted By']) : ''}`
           : '—';
         const action = isContacted
           ? `<button class="btn-revert" onclick="revert(${lead.rowNumber})">Revert to New</button>`
