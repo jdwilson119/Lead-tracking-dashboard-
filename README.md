@@ -19,6 +19,36 @@ Pick the intake path that matches your lead source:
 All paths write into the same sheet/dashboard, so you can also run more
 than one at once (e.g. a Google Form for direct applicants, Meta for ads).
 
+## Before you start: what you'll need
+
+The core problem this solves — Facebook lead ads that currently get
+copy-pasted by hand into a spreadsheet and then re-typed into JobAdder —
+needs access to three separate accounts before it can be built. None of
+this can be set up in advance without them; line these up first:
+
+- [ ] **A Google account** to own the Sheet, Apps Script project, and
+      dashboard deployment (yours or the client's — whoever should own
+      the data long-term).
+- [ ] **A Make.com account** (free tier is enough to start; check actual
+      lead volume against the ~1,000 operations/month free-tier cap once
+      live).
+- [ ] **Facebook Business Manager access** to the client's ad account and
+      the Page running the lead ads, with permission to connect Make.com
+      to it (an admin on the Business Manager can grant this).
+- [ ] **JobAdder API access** — ask the client's JobAdder admin for API
+      credentials (Client ID/Secret, OAuth2 app registration) or to add
+      you as a user with API access. JobAdder's API docs:
+      [developer.jobadder.com](https://developer.jobadder.com).
+- [ ] **Confirm the JobAdder candidate fields** the client wants
+      populated (name, email, phone, source, notes at minimum) and
+      whether they want leads created as **Candidates** only, or also
+      linked to a specific **Job Ad**/requisition in JobAdder.
+
+Once those are in hand, come back and we can build the real Make.com
+scenario step by step (I can walk through each module's exact
+configuration, but can't click through Make/Facebook/JobAdder's UI
+myself).
+
 Once leads are flowing in, two optional add-ons build on top:
 
 - **[Sync to JobAdder](#optional-sync-to-jobadder-via-makecom)** — mirror
