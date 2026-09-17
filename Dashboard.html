@@ -5,19 +5,21 @@
   <meta charset="utf-8">
   <style>
     :root {
-      --bg: #f6f7fb;
-      --card-bg: #ffffff;
-      --text: #1f2430;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --new: #2563eb;
-      --contacted: #16a34a;
-      --accent: #4f46e5;
-      --received: #7c3aed;
-      --delivered: #0891b2;
-      --read: #16a34a;
-      --sent: #6b7280;
-      --live-dot: #16a34a;
+      --bg: #0b0b0d;
+      --card-bg: #17161a;
+      --text: #f2ede0;
+      --muted: #a89f8c;
+      --border: #332d20;
+      --new: #d8b25c;
+      --contacted: #4caf7d;
+      --accent: #d4af37;
+      --accent-ink: #0b0b0d;
+      --received: #c9a4ff;
+      --delivered: #6fc6d9;
+      --read: #4caf7d;
+      --sent: #a89f8c;
+      --live-dot: #4caf7d;
+      --avatar-ring: linear-gradient(45deg, #d4af37, #f4e2a1, #d4af37);
     }
     * { box-sizing: border-box; }
     body {
@@ -27,7 +29,7 @@
       color: var(--text);
       padding: 24px;
     }
-    h1 { font-size: 20px; margin: 0 0 4px; }
+    h1 { font-size: 20px; margin: 0 0 4px; color: var(--accent); letter-spacing: 0.01em; }
     .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
 
     .tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
@@ -62,7 +64,8 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 13px;
-      background: white;
+      background: var(--card-bg);
+      color: var(--text);
     }
     .toolbar .spacer { flex: 1; }
     .toolbar .refresh-note { font-size: 12px; color: var(--muted); }
@@ -82,7 +85,7 @@
       font-size: 13px;
       vertical-align: top;
     }
-    th { background: #fafbfc; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+    th { background: #100f12; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
     tr:last-child td { border-bottom: none; }
 
     .badge {
@@ -90,11 +93,11 @@
       padding: 3px 9px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: 600;
-      color: white;
+      font-weight: 700;
+      color: var(--accent-ink);
     }
     .badge.new { background: var(--new); }
-    .badge.contacted { background: var(--contacted); }
+    .badge.contacted { background: var(--contacted); color: #0b0b0d; }
     .badge.received { background: var(--received); }
     .badge.sent { background: var(--sent); }
     .badge.delivered { background: var(--delivered); }
@@ -112,14 +115,29 @@
       font-weight: 600;
       cursor: pointer;
     }
-    .btn-contact { background: var(--accent); color: white; }
-    .btn-contact:hover { background: #4338ca; }
-    .btn-revert { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
-    .btn-revert:hover { background: #e5e7eb; }
+    .btn-contact { background: var(--accent); color: var(--accent-ink); }
+    .btn-contact:hover { background: #f4e2a1; }
+    .btn-revert { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-revert:hover { background: #221f16; }
 
     .empty { padding: 30px; text-align: center; color: var(--muted); }
     .notes-cell { max-width: 220px; white-space: pre-wrap; }
     .msg-cell { max-width: 320px; white-space: pre-wrap; }
+
+    .avatar-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar-ring {
+      width: 34px; height: 34px; border-radius: 50%; padding: 2px;
+      background: var(--avatar-ring); flex-shrink: 0;
+    }
+    .avatar-ring img, .avatar-ring .avatar-fallback {
+      width: 100%; height: 100%; border-radius: 50%; display: block;
+      object-fit: cover; border: 2px solid var(--bg);
+    }
+    .avatar-fallback {
+      background: var(--card-bg); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -362,6 +380,19 @@
       return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
     }
 
+    function findIgContact(igsidOrUsername) {
+      return igContacts.find((c) => c['IGSID'] === igsidOrUsername || c['Username'] === igsidOrUsername);
+    }
+
+    function avatarHtml(contact, label) {
+      const picUrl = contact && contact['Profile Pic URL'];
+      const isSafeUrl = picUrl && /^https?:\/\//i.test(String(picUrl));
+      const inner = isSafeUrl
+        ? `<img src="${escapeHtml(picUrl)}" alt="" referrerpolicy="no-referrer">`
+        : `<div class="avatar-fallback">${escapeHtml(String(label || '?').slice(0, 1).toUpperCase())}</div>`;
+      return `<div class="avatar-ring">${inner}</div>`;
+    }
+
     function renderIgMessages() {
       const wrap = document.getElementById('igMessagesWrap');
       if (!igMessages.length) {
@@ -371,9 +402,11 @@
       const rows = igMessages.map((m) => {
         const isIn = m['Direction'] === 'Received';
         const arrow = isIn ? '<span class="direction in">↘</span>' : '<span class="direction out">↗</span>';
+        const contact = findIgContact(m['IGSID']) || findIgContact(m['Username']);
+        const label = m['Username'] || m['IGSID'];
         return `<tr>
           <td>${escapeHtml(m['Timestamp'])}</td>
-          <td>${arrow} ${escapeHtml(m['Username'] || m['IGSID'])}</td>
+          <td><div class="avatar-cell">${avatarHtml(contact, label)}${arrow} ${escapeHtml(label)}</div></td>
           <td class="msg-cell">${escapeHtml(m['Message'])}</td>
           <td>${statusBadge(m['Message Status'])}</td>
         </tr>`;
@@ -412,7 +445,7 @@
           : `<button class="btn-contact" onclick="contactInstagram(${c.rowNumber}, true)">Mark Contacted</button>`;
 
         return `<tr>
-          <td>${escapeHtml(c['Username'] || c['IGSID'])}</td>
+          <td><div class="avatar-cell">${avatarHtml(c, c['Username'] || c['IGSID'])}${escapeHtml(c['Username'] || c['IGSID'])}</div></td>
           <td>${escapeHtml(c['Name'])}</td>
           <td class="msg-cell">${escapeHtml(c['Last Message'])}</td>
           <td>${escapeHtml(c['Last Activity'])}</td>

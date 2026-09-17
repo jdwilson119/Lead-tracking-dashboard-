@@ -23,7 +23,7 @@
 const IG_CONTACTS_SHEET = 'IG Contacts';
 const IG_MESSAGES_SHEET = 'IG Messages';
 const IG_FOLLOWER_LOG_SHEET = 'IG Follower Log';
-const IG_CONTACT_COLUMNS = ['IGSID', 'Username', 'Name', 'First Contact', 'Last Message', 'Last Activity', 'Status', 'Contacted Date', 'Contacted By'];
+const IG_CONTACT_COLUMNS = ['IGSID', 'Username', 'Name', 'Profile Pic URL', 'First Contact', 'Last Message', 'Last Activity', 'Status', 'Contacted Date', 'Contacted By'];
 const IG_MESSAGE_COLUMNS = ['Timestamp', 'IGSID', 'Username', 'Direction', 'Message', 'Message Status'];
 const IG_FOLLOWER_LOG_COLUMNS = ['Date', 'Follower Count'];
 const IG_STATUS_NEW = 'New';
@@ -46,17 +46,24 @@ function ensureInstagramSheets_() {
   };
 }
 
-/** Fetches an Instagram-scoped user's name/username via the Graph API. */
+/**
+ * Fetches an Instagram-scoped user's name/username/profile picture via
+ * the Graph API. Note: `profile_pic` URLs Meta returns are signed and
+ * expire after a while — this is captured once when the contact is
+ * first created, not refreshed, so a very old contact's avatar may
+ * eventually 404. Re-run `refreshInstagramProfilePics_()` periodically
+ * if that matters for your use case.
+ */
 function fetchInstagramProfile_(igsid) {
   const token = PropertiesService.getScriptProperties().getProperty('META_PAGE_ACCESS_TOKEN');
-  const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${igsid}?fields=name,username&access_token=${encodeURIComponent(token)}`;
+  const url = `https://graph.facebook.com/${META_GRAPH_VERSION}/${igsid}?fields=name,username,profile_pic&access_token=${encodeURIComponent(token)}`;
   const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
   const data = JSON.parse(response.getContentText());
   if (data.error) {
     console.error('Graph API error fetching IG profile ' + igsid + ': ' + JSON.stringify(data.error));
-    return { name: '', username: '' };
+    return { name: '', username: '', profilePic: '' };
   }
-  return { name: data.name || '', username: data.username || '' };
+  return { name: data.name || '', username: data.username || '', profilePic: data.profile_pic || '' };
 }
 
 function findContactRow_(sheet, igsid) {
@@ -78,9 +85,30 @@ function getOrCreateContact_(igsid) {
   const profile = fetchInstagramProfile_(igsid);
   const now = new Date();
   sheets.contacts.appendRow([
-    igsid, profile.username, profile.name, now, '', now, IG_STATUS_NEW, '', ''
+    igsid, profile.username, profile.name, profile.profilePic, now, '', now, IG_STATUS_NEW, '', ''
   ]);
   return sheets.contacts.getLastRow();
+}
+
+/**
+ * Optional maintenance function: re-fetches every contact's profile
+ * picture URL, since Meta's signed URLs expire over time. Run manually
+ * or on an occasional time-driven trigger (e.g. weekly) if stale
+ * avatars become noticeable.
+ */
+function refreshInstagramProfilePics_() {
+  const sheets = ensureInstagramSheets_();
+  const lastRow = sheets.contacts.getLastRow();
+  if (lastRow < 2) return;
+
+  const idCol = IG_CONTACT_COLUMNS.indexOf('IGSID') + 1;
+  const picCol = IG_CONTACT_COLUMNS.indexOf('Profile Pic URL') + 1;
+  const ids = sheets.contacts.getRange(2, idCol, lastRow - 1, 1).getValues();
+
+  ids.forEach((row, i) => {
+    const profile = fetchInstagramProfile_(row[0]);
+    sheets.contacts.getRange(i + 2, picCol).setValue(profile.profilePic);
+  });
 }
 
 function touchContactActivity_(row, lastMessagePreview) {
