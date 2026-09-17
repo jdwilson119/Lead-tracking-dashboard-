@@ -9,7 +9,7 @@
  */
 
 const SHEET_NAME = 'Form Responses 1'; // rename to 'Leads' (or your sheet's tab name) if you're not using a Google Form
-const LEAD_COLUMNS = ['Timestamp', 'Name', 'Email', 'Phone', 'Company', 'Job Title', 'Lead Source', 'Notes', 'CV Link'];
+const LEAD_COLUMNS = ['Timestamp', 'Name', 'Email', 'Phone', 'Company', 'Job Title', 'Lead Source', 'Job Ad', 'Notes', 'CV Link'];
 const TRACKING_COLUMNS = ['Status', 'Contacted Date', 'Contacted By'];
 const STATUS_NEW = 'New';
 const STATUS_CONTACTED = 'Contacted';

@@ -212,36 +212,68 @@ Deploy, then share/open that URL — that's your live dashboard.
 
 ## Optional: Sync to JobAdder via Make.com
 
-Once leads are flowing into the sheet, add JobAdder sync as extra steps in
-the same (or a second) Make.com scenario. JobAdder has a documented REST
-API with OAuth2 and appears as a native app in Make's directory — confirm
-the exact module names in your Make account, since candidate-vs-application
-modeling varies by JobAdder API version; a generic HTTP module with a
-JobAdder OAuth2 connection covers any endpoint if a native module is
-missing.
+The client wants leads linked to the **specific Job Ad** they applied
+for, not just created as loose candidates — which means Make also needs
+to know *which* Job Ad a given lead is for. Since a Facebook lead ad
+almost always maps to one specific role, the practical way to resolve
+that is a small lookup table matching each Facebook lead form to its
+JobAdder Job Ad.
 
-**Create/update the candidate when a lead comes in** (append to the Meta
-→ Sheet scenario above, after the Google Sheets "Add a Row" step):
+JobAdder has a documented REST API with OAuth2 and appears as a native
+app in Make's directory — confirm the exact module names in your Make
+account, since candidate/application modeling varies by JobAdder API
+version; a generic HTTP module with a JobAdder OAuth2 connection covers
+any endpoint if a native module is missing.
 
-1. **JobAdder — Search Candidates by Email** (or `GET /v2/candidates?email=...`
+**0. Set up the Job Ad mapping.** Add a `Job Ad Mapping` tab to the same
+spreadsheet with columns: `Facebook Form ID`, `Facebook Form Name`,
+`JobAdder Job Ad ID`, `Job Title`. Fill in one row per active role/ad —
+whoever launches a new Facebook lead ad for a role needs to add a row
+here pointing at that role's JobAdder Job Ad ID. This is the one manual
+step that can't be automated away, since it's a business decision (which
+ad is for which role), not data already sitting in either system.
+
+**Create the candidate and link them to the Job Ad** (append to the Meta
+→ Sheet scenario, after the Google Sheets "Add a Row" step):
+
+1. **Google Sheets — Search Rows** on `Job Ad Mapping`, matching the
+   Facebook Form ID from the trigger's payload, to get the `JobAdder Job
+   Ad ID` and `Job Title`.
+2. **Google Sheets — Update a Row** (the lead row just added) — set its
+   `Job Ad` column to the matched `Job Title`, so it's visible on the
+   dashboard which role each lead is for.
+3. **JobAdder — Search Candidates by Email** (or `GET /v2/candidates?email=...`
    via HTTP) to check whether this person already exists in JobAdder.
-2. **Router**, branching on whether step 1 found a match:
+4. **Router**, branching on whether step 3 found a match:
    - **Match found:** **JobAdder — Update Candidate** — patch
-     phone/notes/source if changed, so you don't create a duplicate.
+     phone/notes/source if changed, so you don't create a duplicate
+     candidate record.
    - **No match:** **JobAdder — Create Candidate** — map Name →
      firstName/lastName, Email, Phone/mobile, Lead Source into JobAdder's
      source/notes field.
-3. **(Optional) Error handling** — a Break/Resume or Filter on the
-   JobAdder steps, feeding a Slack or email alert, so a failed sync
-   doesn't fail silently — the lead still lands in the Sheet either way.
+5. **JobAdder — Create Job Application**, linking the candidate ID from
+   step 4 to the Job Ad ID from step 1. This is the step that actually
+   attaches the lead to the specific role in JobAdder, rather than
+   leaving them as an unlinked candidate.
+6. **Google Sheets — Update a Row** — write the resulting Candidate ID
+   and Job Application ID back into hidden columns on the lead's row (add
+   `JobAdder Candidate ID` / `JobAdder Application ID` to the sheet).
+   The "push Contacted status" scenario below needs the Application ID
+   to know which JobAdder record to update.
+7. **(Optional) Error handling** — a Break/Resume or Filter on the
+   JobAdder steps (including "no mapping row found" from step 1), feeding
+   a Slack or email alert, so a failed sync doesn't fail silently — the
+   lead still lands in the Sheet either way.
 
 **Push "Contacted" status into JobAdder** (a separate scenario):
 
 1. **Trigger — Google Sheets: Watch Rows** (or Watch Row Updates) on the
    leads tab, filtered to rows where `Status` changed to `Contacted`.
-2. **JobAdder — Update Candidate / Change Status** — move their JobAdder
-   stage (e.g. "Contacted"/"In Progress") using the candidate ID captured
-   in the scenario above.
+2. **JobAdder — Update Job Application status**, using the Job
+   Application ID captured in step 5 above, moving that specific
+   application forward (e.g. to "Contacted"/"In Progress") — updating the
+   *application*, not just the candidate record, matters once the same
+   person could be linked to more than one Job Ad over time.
 
 ---
 

@@ -157,7 +157,7 @@
     }
 
     function fieldOrder(lead) {
-      const priority = ['Name', 'Full Name', 'Email', 'Email Address', 'Phone', 'Phone Number', 'Company', 'Job Title', 'Lead Source', 'Notes', 'CV Link'];
+      const priority = ['Name', 'Full Name', 'Email', 'Email Address', 'Phone', 'Phone Number', 'Company', 'Job Title', 'Job Ad', 'Lead Source', 'Notes', 'CV Link'];
       const keys = Object.keys(lead).filter((k) => k !== 'rowNumber' && k !== 'Status' && k !== 'Contacted Date' && k !== 'Contacted By' && k !== 'Timestamp');
       keys.sort((a, b) => {
         const pa = priority.indexOf(a), pb = priority.indexOf(b);
